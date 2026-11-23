@@ -1,0 +1,24 @@
+{
+  "_note": "EXAMPLE rules. Replace the match values with your real campaign IDs, caller numbers, Sarvam workspace names and template names. First matching rule wins. AWS does not use this file: it reads your cost allocation tags (client, product, env).",
+  "default": {"client": "Unassigned", "product": "Unassigned", "purpose": "Unassigned"},
+  "rules": {
+    "vobiz": [
+      {"match": {"campaign_id": "EXAMPLE-SNAPMINT-DPD1"}, "client": "Snapmint", "product": "Kollect", "purpose": "Collections calls"},
+      {"match": {"campaign_id_prefix": "SMFG-"}, "client": "SMFG", "product": "Kollect", "purpose": "Collections calls"},
+      {"match": {"campaign_id_prefix": "EKL-"}, "client": "EKL", "product": "LeadX", "purpose": "Lead nurturing calls"},
+      {"match": {"from_number": "+910000000001"}, "client": "OneCard", "product": "Kollect", "purpose": "Collections calls"}
+    ],
+    "sarvam": [
+      {"match": {"workspace": "kollect-prod"}, "client": "Shared", "product": "Kollect", "purpose": "Collections voice agents"},
+      {"match": {"workspace": "leadx-prod"}, "client": "Shared", "product": "LeadX", "purpose": "Lead nurturing voice agents"},
+      {"match": {"workspace_prefix": "qa-"}, "client": "Internal", "product": "QA", "purpose": "Call audit and testing"},
+      {"match": {"workspace_prefix": "dev"}, "client": "Internal", "product": "R&D", "purpose": "Development"}
+    ],
+    "interakt": [
+      {"match": {"template_prefix": "collect_"}, "client": "Kollect clients", "product": "Kollect", "purpose": "Payment reminders"},
+      {"match": {"template_prefix": "settle_"}, "client": "Kollect clients", "product": "Kollect", "purpose": "Settlement offers"},
+      {"match": {"template_prefix": "lead_"}, "client": "LeadX clients", "product": "LeadX", "purpose": "Lead nurturing"},
+      {"match": {"template_prefix": "otp_"}, "client": "Internal", "product": "Platform", "purpose": "Login OTP"}
+    ]
+  }
+}

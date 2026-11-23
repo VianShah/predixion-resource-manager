@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Predixion Resource Manager</title>
+<style>
+:root{--navy:#022440;--teal:#0B9E84;--blue:#1A7FD4;--amber:#E8A838;--coral:#D95F4B;--bg:#f4f6f8;--card:#fff;--line:#dfe5ea;--mut:#5b6b78;--ink:#16232e}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 Arial,Calibri,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--navy);color:#fff;padding:14px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+header h1{font-size:17px;margin:0;font-weight:700}header .sub{color:#9fb6c8;font-size:12px}
+nav{display:flex;gap:4px;padding:0 24px;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto}
+nav button{border:0;background:none;padding:12px 14px;font:inherit;color:var(--mut);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
+nav button.on{color:var(--navy);border-color:var(--teal);font-weight:700}
+nav .dot{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;color:#fff;font-size:11px;margin-left:5px;text-align:center}
+main{padding:20px 24px;max-width:1180px;margin:0 auto}
+.banner{background:#fff6e0;border:1px solid var(--amber);padding:8px 12px;border-radius:6px;margin-bottom:14px;font-size:13px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px}
+.kpi .l{color:var(--mut);font-size:12px}.kpi .v{font-size:22px;font-weight:700;color:var(--navy);margin-top:2px}.kpi .s{font-size:12px;color:var(--mut)}
+h2{font-size:15px;margin:22px 0 8px;color:var(--navy)}h3{font-size:13px;margin:0 0 8px;color:var(--navy)}
+table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;color:var(--mut);font-weight:600;border-bottom:1px solid var(--line);padding:6px 8px}
+td{padding:6px 8px;border-bottom:1px solid #eef1f4}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.two{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(380px,1fr))}
+.alert{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-left:4px solid var(--blue);background:#fff;border-radius:6px;margin-bottom:8px;border:1px solid var(--line);border-left-width:4px}
+.alert.crit{border-left-color:var(--coral)}.alert.warn{border-left-color:var(--amber)}.alert.info{border-left-color:var(--blue)}
+.alert b{display:block}.alert small{color:var(--mut)}.alert a{margin-left:auto;white-space:nowrap;color:var(--blue);cursor:pointer;font-weight:600}
+.pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:#e8eef3;color:var(--mut)}
+.pill.ok{background:#dff5ef;color:#07715e}.pill.bad{background:#fbe3df;color:#a2402f}
+.bar{height:8px;background:#e8eef3;border-radius:4px;overflow:hidden;min-width:60px}.bar i{display:block;height:100%;background:var(--teal)}
+.muted{color:var(--mut)}.empty{color:var(--mut);padding:10px 0}
+.rb{margin-bottom:12px}.rb ol{margin:6px 0 6px 18px;padding:0}.rb .meta{font-size:12px;color:var(--mut)}.rb .ver{color:#8a5a00;font-size:12px}
+svg text{font:10px Arial;fill:#5b6b78}
+a{color:var(--blue)}
+</style></head><body>
+<header><h1>Predixion Resource Manager</h1><span class="sub" id="gen"></span></header>
+<nav id="nav"></nav>
+<main id="main"><div class="empty">Loading…</div></main>
+<script>
+const VIEWS=[["overview","Overview"],["sarvam","Sarvam"],["aws","AWS"],["interakt","Interakt"],["vobiz","Vobiz"],["guide","Fix guide"],["setup","Setup"]];
+let S=null,R=null,view="overview",focus=null;
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const inr=v=>v==null?"n/a":"₹"+Math.round(v).toLocaleString("en-IN");
+const usd=v=>v==null?"n/a":"$"+Math.round(v).toLocaleString("en-US");
+const num=v=>v==null?"n/a":Number(v).toLocaleString("en-IN");
+const pct=v=>v==null?"n/a":v+"%";
+const kpi=(l,v,s="")=>`<div class="card kpi"><div class="l">${esc(l)}</div><div class="v">${esc(v)}</div><div class="s">${esc(s)}</div></div>`;
+function ago(ts){if(!ts)return"never";const h=(Date.now()-new Date(ts))/36e5;return h<1?Math.round(h*60)+" min ago":h<48?Math.round(h)+" h ago":Math.round(h/24)+" days ago"}
+function table(cols,rows,empty="No data yet."){if(!rows||!rows.length)return`<div class="empty">${empty}</div>`;
+ return`<table><tr>${cols.map(c=>`<th class="${c.n?"n":""}">${esc(c.h)}</th>`).join("")}</tr>${rows.map(r=>`<tr>${cols.map(c=>`<td class="${c.n?"n":""}">${c.raw?c.f(r):esc(c.f(r))}</td>`).join("")}</tr>`).join("")}</table>`}
+function bars(data,key,fmt,color="#0B9E84"){if(!data||!data.length)return`<div class="empty">No data yet.</div>`;
+ const W=560,H=120,m=Math.max(...data.map(d=>d[key]||0))||1,w=W/data.length;
+ return`<svg viewBox="0 0 ${W} ${H+16}" width="100%" role="img" aria-label="daily trend">${data.map((d,i)=>{const h=(d[key]||0)/m*H;return`<rect x="${i*w+1}" y="${H-h}" width="${Math.max(w-2,1)}" height="${h}" fill="${color}"><title>${esc(d.day)}: ${esc(fmt(d[key]))}</title></rect>`}).join("")}<text x="0" y="${H+12}">${esc(data[0].day)}</text><text x="${W}" y="${H+12}" text-anchor="end">${esc(data[data.length-1].day)}</text></svg>`}
+function alerts(list){if(!list.length)return`<div class="card muted">No active alerts.</div>`;
+ return list.map(a=>`<div class="alert ${a.severity}"><div><b>${esc(a.title)}</b><small>${esc(a.detail)}</small></div><a onclick="openGuide('${esc(a.runbook)}')">How to fix</a></div>`).join("")}
+function stamp(sync,label){if(!sync)return`<span class="pill">${label}: not synced</span>`;return`<span class="pill ${sync.ok?"ok":"bad"}">${label}: ${sync.ok?"ok":"failed"}, ${ago(sync.ts)}</span>`}
+function purposeTable(rows,extra=[]){return table([{h:"Client · product · purpose",f:r=>r.label},...extra,{h:"Share",raw:1,f:r=>{const t=rows.reduce((a,x)=>a+(x.cost??x.usd??0),0)||1;const v=(r.cost??r.usd??0)/t*100;return`<div class="bar"><i style="width:${v}%;${r.client==="Unassigned"?"background:#E8A838":""}"></i></div>`}}],rows)}
+function demoBanner(){return S.demo?`<div class="banner"><b>Demo data.</b> Everything below is synthetic. Fill in <code>.env</code> and restart without RM_DEMO to see your accounts.</div>`:""}
+
+function overview(){const sp=S.spend_inr,tot=Object.values(sp).reduce((a,b)=>a+b,0);
+ const names={sarvam:"Sarvam",aws:"AWS",interakt:"Interakt (estimated)",vobiz:"Vobiz"};
+ return demoBanner()+`<div class="grid">${kpi("Spend this month",inr(tot),S.month)}${Object.keys(names).map(k=>kpi(names[k],inr(sp[k]),S.unassigned_pct[k]+"% has no purpose")).join("")}</div>
+ <h2>Alerts</h2>${alerts(S.alerts)}
+ <h2>Where the money goes</h2><div class="card">${table([{h:"Service",f:r=>r[0]},{h:"Spend",n:1,f:r=>inr(r[1])},{h:"Share",raw:1,f:r=>`<div class="bar"><i style="width:${r[1]/(tot||1)*100}%"></i></div>`},{h:"No purpose",n:1,f:r=>pct(S.unassigned_pct[r[2]])}],Object.keys(names).map(k=>[names[k],sp[k],k]))}
+ <p class="muted">AWS is converted at ₹${S.services.aws.kpis.usd_inr}/USD. Interakt cost uses placeholder per-message rates until you confirm them (FOR FOUNDER REVIEW).</p></div>`}
+
+function sarvam(){const v=S.services.sarvam,k=v.kpis;
+ return demoBanner()+`<div class="grid">${kpi("Spend this month",inr(k.cost_inr),k.requests.toLocaleString()+" requests · plan "+k.plan)}${kpi("Credits left",inr(k.balance_inr),k.balance_days_left?`about ${k.balance_days_left} days · entered ${ago(k.balance_ts)}`:"enter by hand")}${kpi("Speech to text",num(k.stt_min)+" min")}${kpi("Text to speech",num(k.tts_chars)+" chars")}${kpi("LLM tokens",num(k.llm_tokens_in+k.llm_tokens_out),num(k.llm_tokens_in)+" in · "+num(k.llm_tokens_out)+" out")}${kpi("Errors, 24h",k.errors_24h)}</div>
+ <p><span class="pill">Last event: ${ago(v.last_event)}</span> <span class="pill">Usage is self-logged and priced from rates.json; Sarvam has no usage API</span></p>
+ ${alerts(S.alerts.filter(a=>a.service==="sarvam"))}
+ <h2>Used for what</h2><div class="card">${purposeTable(v.by_purpose,[{h:"Requests",n:1,f:r=>num(r.requests)},{h:"Cost",n:1,f:r=>inr(r.cost)}])}</div>
+ <div class="two"><div class="card"><h3>By API</h3>${table([{h:"API",f:r=>r.name},{h:"Requests",n:1,f:r=>num(r.requests)},{h:"Cost",n:1,f:r=>inr(r.cost)}],v.by_api)}</div>
+ <div class="card"><h3>By workspace</h3>${table([{h:"Workspace",f:r=>r.name||"(none)"},{h:"Requests",n:1,f:r=>num(r.requests)},{h:"Cost",n:1,f:r=>inr(r.cost)}],v.by_workspace)}</div></div>
+ <h2>Daily cost</h2><div class="card">${bars(v.daily,"cost",inr)}</div>
+ <h2>Errors, last 24 hours</h2><div class="card">${table([{h:"Status",f:r=>r.status},{h:"Code",f:r=>r.code},{h:"Count",n:1,f:r=>r.n}],v.errors,"No errors.")}</div>`}
+
+function aws(){const v=S.services.aws,k=v.kpis;
+ return demoBanner()+`<div class="grid">${kpi("Gross spend, month",usd(k.mtd_usd),inr(k.mtd_inr))}${kpi("Covered by credits",usd(k.credits_applied_usd),"cash "+usd(k.cash_usd))}${kpi("Forecast, month",usd(k.forecast_usd),k.budget_usd?"budget "+usd(k.budget_usd):"no budget set")}${kpi("Credits left",usd(k.credits_remaining_usd),k.runway_days?`about ${k.runway_days} days at ${usd(k.avg7_usd)}/day`:"")}${kpi("Untagged",pct(k.untagged_pct),"no client tag")}</div>
+ <p>${stamp(v.last_sync,"Costs")} ${stamp(v.credits_sync,"Credits")}</p>
+ ${alerts(S.alerts.filter(a=>a.service==="aws"))}
+ <h2>Used for what (client · product tags)</h2><div class="card">${purposeTable(v.by_purpose,[{h:"Cost",n:1,f:r=>usd(r.usd)}])}</div>
+ <div class="two"><div class="card"><h3>Top services</h3>${table([{h:"Service",f:r=>r.name},{h:"Cost",n:1,f:r=>usd(r.usd)}],v.by_service)}</div>
+ <div class="card"><h3>Credits</h3>${table([{h:"Credit",f:r=>r.name},{h:"Left",n:1,f:r=>usd(r.remaining)},{h:"Expires",f:r=>r.expires?`${r.expires} (${r.days_to_expiry}d)`:"none"}],v.credits,"No credits found.")}</div></div>
+ <h2>Daily gross cost (USD)</h2><div class="card">${bars(v.daily,"usd",usd,"#1A7FD4")}</div>`}
+
+function interakt(){const v=S.services.interakt,k=v.kpis;
+ return demoBanner()+`<div class="grid">${kpi("Estimated cost",inr(k.est_cost_inr),"delivered × placeholder rate")}${kpi("Sent",num(k.sent))}${kpi("Delivered",pct(k.delivery_rate),num(k.delivered))}${kpi("Read",pct(k.read_rate),"of delivered")}${kpi("Failed",pct(k.failure_rate),num(k.failed))}${kpi("Wallet",inr(k.wallet_inr),k.wallet_days_left?`about ${k.wallet_days_left} days · entered ${ago(k.wallet_ts)}`:"enter by hand")}</div>
+ <p><span class="pill">Last webhook: ${ago(v.last_event)}</span> <span class="pill bad">Rates: ${esc(v.rate_status||"unverified")}</span></p>
+ ${alerts(S.alerts.filter(a=>a.service==="interakt"))}
+ <h2>Used for what</h2><div class="card">${purposeTable(v.by_purpose,[{h:"Category",f:r=>r.category},{h:"Sent",n:1,f:r=>num(r.sent)},{h:"Failed",n:1,f:r=>num(r.failed)},{h:"Est. cost",n:1,f:r=>inr(r.cost)}])}</div>
+ <div class="two"><div class="card"><h3>Templates</h3>${table([{h:"Template",f:r=>r.name||"(unknown)"},{h:"Category",f:r=>r.category},{h:"Sent",n:1,f:r=>num(r.sent)},{h:"Failed",n:1,f:r=>num(r.failed)}],v.by_template)}</div>
+ <div class="card"><h3>Failure codes this month</h3>${table([{h:"Code",f:r=>r.code||"?"},{h:"Reason",f:r=>r.reason||""},{h:"Count",n:1,f:r=>r.n}],v.errors,"No failures.")}</div></div>
+ <h2>Messages per day</h2><div class="card">${bars(v.daily,"sent",num,"#0B9E84")}</div>`}
+
+function vobiz(){const v=S.services.vobiz,k=v.kpis;
+ return demoBanner()+`<div class="grid">${kpi("Spend this month",inr(k.cost_inr),num(k.calls)+" calls")}${kpi("Answer rate",pct(k.answer_rate),num(k.answered)+" answered")}${kpi("Talk time",num(k.talk_min)+" min")}${kpi("Cost per answered call",k.cost_per_answered==null?"n/a":"₹"+k.cost_per_answered)}${kpi("Balance",inr(k.available_balance),k.balance_days_left?`about ${k.balance_days_left} days`:"")}${kpi("Channels in use",k.concurrency_pct==null?"n/a":Math.round(k.concurrency_pct)+"%",k.max_concurrent?`${k.concurrent_calls} of ${k.max_concurrent}`:"")}</div>
+ <p>${stamp(v.last_sync,"Calls")} ${stamp(v.account_sync,"Balance")}</p>
+ ${alerts(S.alerts.filter(a=>a.service==="vobiz"))}
+ <h2>Used for what</h2><div class="card">${purposeTable(v.by_purpose,[{h:"Calls",n:1,f:r=>num(r.calls)},{h:"Answered",n:1,f:r=>num(r.answered)},{h:"Talk min",n:1,f:r=>num(r.talk_min)},{h:"Cost",n:1,f:r=>inr(r.cost)}])}</div>
+ <div class="two"><div class="card"><h3>Why calls ended</h3>${table([{h:"Hangup cause",f:r=>r.name},{h:"Calls",n:1,f:r=>num(r.n)}],v.by_hangup)}</div>
+ <div class="card"><h3>By caller number</h3>${table([{h:"Number",f:r=>r.number},{h:"Calls",n:1,f:r=>num(r.calls)},{h:"Answer rate",n:1,f:r=>pct(r.calls?Math.round(r.answered/r.calls*1000)/10:0)}],v.by_number)}</div></div>
+ <h2>Calls per day</h2><div class="card">${bars(v.daily,"calls",num,"#022440")}</div>`}
+
+function guide(){const q=(focus||"").toLowerCase();
+ const list=R.runbooks;const order=["sarvam","vobiz","interakt","aws","all"];
+ return`<p class="muted">Each entry names its source. Entries marked VERIFY were written from the vendor documentation entry points and need a check against the live page before you rely on them.</p>`+
+ order.map(svc=>{const items=list.filter(r=>r.service===svc);if(!items.length)return"";
+ return`<h2>${svc==="all"?"All services":esc(svc[0].toUpperCase()+svc.slice(1))}</h2>`+items.map(r=>`<div class="card rb" id="rb-${esc(r.id)}" style="${focus===r.id?"border-color:#0B9E84;box-shadow:0 0 0 2px #0B9E8433":""}"><b>${esc(r.title)}</b>
+ <div class="meta">Symptom: ${esc(r.symptom)}</div><div class="meta">Cause: ${esc(r.cause)}</div><ol>${r.steps.map(s=>`<li>${esc(s)}</li>`).join("")}</ol>
+ <div class="meta">${r.docs.map(d=>`<a href="${esc(d.url)}" target="_blank" rel="noopener noreferrer">${esc(d.label)}</a>`).join(" · ")||"No external docs."}</div>
+ ${r.verify?`<div class="ver">${esc(r.verify)}</div>`:""}</div>`).join("")}).join("")}
+
+function setup(){const c=S.configured;const row=(n,ok,t)=>`<tr><td>${n}</td><td><span class="pill ${ok?"ok":"bad"}">${ok?"configured":"not set"}</span></td><td class="muted">${t}</td></tr>`;
+ return`<div class="card"><table><tr><th>Service</th><th>Status</th><th>What it needs</th></tr>
+ ${row("AWS",c.aws,"AWS_ACCOUNT_ID plus credentials (profile or keys) in .env. Tags: client, product, env.")}
+ ${row("Vobiz",c.vobiz,"VOBIZ_AUTH_ID and VOBIZ_AUTH_TOKEN in .env.")}
+ ${row("Interakt",c.interakt,"INTERAKT_WEBHOOK_SECRET in .env, and the webhook URL set in Interakt (public HTTPS).")}
+ ${row("Sarvam",c.sarvam,"RM_INGEST_TOKEN in .env; your agents report usage with rm/sarvam_logger.py. No Sarvam key is needed here.")}</table></div>
+ <p class="muted">Sarvam credits and the Interakt wallet have no API: enter them with <code>python -m rm.balance</code>.</p>`}
+
+const FN={overview,sarvam,aws,interakt,vobiz,guide,setup};
+function nav(){const cnt=s=>S.alerts.filter(a=>a.service===s&&a.severity!=="info").length;
+ document.getElementById("nav").innerHTML=VIEWS.map(([id,n])=>{const c=id==="overview"?S.alerts.filter(a=>a.severity!=="info").length:cnt(id);
+ return`<button class="${view===id?"on":""}" onclick="go('${id}')">${n}${c?`<span class="dot" style="background:${S.alerts.some(a=>(id==="overview"||a.service===id)&&a.severity==="crit")?"#D95F4B":"#E8A838"}">${c}</span>`:""}</button>`}).join("")}
+function render(){nav();document.getElementById("main").innerHTML=FN[view]();if(view==="guide"&&focus){const e=document.getElementById("rb-"+focus);if(e)e.scrollIntoView({block:"center"})}}
+function go(v){view=v;focus=null;render();window.scrollTo(0,0)}
+function openGuide(id){view="guide";focus=id;render()}
+async function boot(){try{S=window.__BOOT__?window.__BOOT__.summary:await (await fetch("/api/summary")).json();R=window.__BOOT__?window.__BOOT__.runbooks:await (await fetch("/api/runbooks")).json();
+ document.getElementById("gen").textContent=S.month+" · updated "+new Date(S.generated_at).toLocaleString("en-IN",{timeZone:"Asia/Kolkata"})+" IST";render()}
+ catch(e){document.getElementById("main").innerHTML='<div class="card">Could not load data: '+esc(e.message)+'</div>'}}
+boot();if(!window.__BOOT__)setInterval(boot,300000);
+</script></body></html>

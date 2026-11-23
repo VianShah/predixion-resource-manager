@@ -1,0 +1,30 @@
+{
+  "_note": "Rate cards used to price usage that vendors do not price for us. Edit when your plan or invoice changes.",
+  "sarvam": {
+    "_status": "From docs.sarvam.ai pricing page (INR, excluding 18% GST), read 23-Nov-2026. VERIFY against Settings > Plans & pricing before quoting to a client.",
+    "plans": {
+      "payg":   {"stt_per_min": 0.49, "stt_diarize_per_min": 0.59, "tts_per_1k_chars": {"bulbul-v4-flash": 2.00, "bulbul-v3": 3.00, "default": 3.00}, "translate_per_1k_chars": 2.00, "lid_per_1k_chars": 0.35},
+      "pro":    {"stt_per_min": 0.45, "stt_diarize_per_min": 0.54, "tts_per_1k_chars": {"bulbul-v4-flash": 1.85, "bulbul-v3": 2.85, "default": 2.85}, "translate_per_1k_chars": 1.70, "lid_per_1k_chars": 0.35},
+      "growth": {"stt_per_min": 0.41, "stt_diarize_per_min": 0.50, "tts_per_1k_chars": {"bulbul-v4-flash": 1.70, "bulbul-v3": 2.70, "default": 2.70}, "translate_per_1k_chars": 1.50, "lid_per_1k_chars": 0.35}
+    },
+    "llm_per_1m_tokens": {
+      "sarvam-105b": {"input": 10, "cached_input": 0.25, "output": 25},
+      "sarvam-105b-conversations": {"input": 10, "cached_input": 0.25, "output": 25},
+      "sarvam-prism": {"input": 4, "cached_input": 0, "output": 0},
+      "glm5.3": {"input": 126, "cached_input": 20, "output": 390},
+      "glm5.3-flash": {"input": 13.5, "cached_input": 2.5, "output": 45},
+      "gemma4": {"input": 35, "cached_input": 10, "output": 90},
+      "default": {"input": 10, "cached_input": 0.25, "output": 25}
+    }
+  },
+  "interakt": {
+    "_status": "UNVERIFIED PLACEHOLDERS. Replace with the per-message rates on your Interakt or Meta invoice. Until then the dashboard labels message cost as an estimate.",
+    "rate_per_delivered_message_inr": {"marketing": 0.86, "utility": 0.145, "authentication": 0.125, "service": 0.0, "unknown": 0.0},
+    "template_categories": [
+      {"prefix": "collect_", "category": "utility"},
+      {"prefix": "settle_", "category": "marketing"},
+      {"prefix": "lead_", "category": "marketing"},
+      {"prefix": "otp_", "category": "authentication"}
+    ]
+  }
+}
